@@ -30,6 +30,8 @@ from text import nonewlines
 
 @dataclass
 class Document:
+    """Represents a document returned from the search."""
+
     id: Optional[str]
     content: Optional[str]
     embedding: Optional[List[float]]
@@ -44,6 +46,7 @@ class Document:
     reranker_score: Optional[float] = None
 
     def serialize_for_results(self) -> dict[str, Any]:
+        """Serializes the document for search results."""
         return {
             "id": self.id,
             "content": self.content,
@@ -85,12 +88,16 @@ class Document:
 
 @dataclass
 class ThoughtStep:
+    """Represents a step in a thought process."""
+
     title: str
     description: Optional[Any]
     props: Optional[dict[str, Any]] = None
 
 
 class Approach(ABC):
+    """Abstract base class for different approaches."""
+
     def __init__(
         self,
         search_client: SearchClient,
@@ -118,6 +125,7 @@ class Approach(ABC):
         self.vision_token_provider = vision_token_provider
 
     def build_filter(self, overrides: dict[str, Any], auth_claims: dict[str, Any]) -> Optional[str]:
+        """Builds the filter for the search query."""
         exclude_category = overrides.get("exclude_category")
         security_filter = self.auth_helper.build_security_filters(overrides, auth_claims)
         filters = []
@@ -138,6 +146,7 @@ class Approach(ABC):
         minimum_search_score: Optional[float],
         minimum_reranker_score: Optional[float],
     ) -> List[Document]:
+        """Performs a search query."""
         # Use semantic ranker if requested and if retrieval mode is text or hybrid (vectors + text)
         if use_semantic_ranker and query_text:
             results = await self.search_client.search(
@@ -190,6 +199,7 @@ class Approach(ABC):
     def get_sources_content(
         self, results: List[Document], use_semantic_captions: bool, use_image_citation: bool
     ) -> list[str]:
+        """Returns the content of the sources."""
         if use_semantic_captions:
             return [
                 (self.get_citation((doc.sourcepage or ""), use_image_citation))
@@ -204,6 +214,7 @@ class Approach(ABC):
             ]
 
     def get_citation(self, sourcepage: str, use_image_citation: bool) -> str:
+        """Returns the citation for a source."""
         if use_image_citation:
             return sourcepage
         else:
@@ -216,6 +227,7 @@ class Approach(ABC):
             return sourcepage
 
     async def compute_text_embedding(self, q: str):
+        """Computes the text embedding using the OpenAI API."""
         SUPPORTED_DIMENSIONS_MODEL = {
             "text-embedding-ada-002": False,
             "text-embedding-3-small": True,
@@ -238,6 +250,7 @@ class Approach(ABC):
         return VectorizedQuery(vector=query_vector, k_nearest_neighbors=50, fields="embedding")
 
     async def compute_image_embedding(self, q: str):
+        """Computes the image embedding using the Azure Computer Vision API."""
         endpoint = urljoin(self.vision_endpoint, "computervision/retrieval:vectorizeText")
         headers = {"Content-Type": "application/json"}
         params = {"api-version": "2023-02-01-preview", "modelVersion": "latest"}
@@ -253,7 +266,9 @@ class Approach(ABC):
                 image_query_vector = json["vector"]
         return VectorizedQuery(vector=image_query_vector, k_nearest_neighbors=50, fields="imageEmbedding")
 
-    async def run(
+    async def run(self):
+        """Runs the approach."""
+        # TODO: Add implementation
         self,
         messages: list[ChatCompletionMessageParam],
         session_state: Any = None,
